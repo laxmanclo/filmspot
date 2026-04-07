@@ -42,6 +42,7 @@ Video File
                                    {t, image_emb, caption, transcript}
                                    sequential edges (t↔t+1)
                                    KNN edges (top-5 by image_emb cosine sim)
+                                   + persist vectors/metadata in ChromaDB
 
 QUERY
     User input: text ("when does X happen")
@@ -61,7 +62,7 @@ QUERY
                     │
              query embedding (512d)  ← same space as stored frame embeddings
                     │
-          cosine sim against all node image_embs → top-k hits
+       ChromaDB vector search against persisted frame embeddings → top-k hits
                     │
           graph traversal (expand via KNN + sequential edges)
                     │
@@ -94,7 +95,11 @@ filmspot/
 │   ├── __init__.py
 │   ├── schema.py               # @dataclass SentenceNode {t, image_emb, caption, transcript}
 │   ├── builder.py              # networkx graph: sequential edges + KNN edges on image_emb
-│   └── storage.py              # save/load graph (pickle) + embeddings (.npy)
+│   └── storage.py              # save/load graph (pickle) + node/index maps for vector IDs
+
+├── vector_store/
+│   ├── __init__.py
+│   └── chroma_store.py         # persistent ChromaDB client, upsert/query frame embeddings
 │
 ├── retrieval/
 │   ├── __init__.py
@@ -118,7 +123,9 @@ filmspot/
 │
 ├── data/
 │   ├── movies/
-│   └── index/                  # per movie: graph.pkl + frame_embeddings.npy
+│   └── index/                  # per movie: graph.pkl + metadata.json
+
+├── chroma_db/                  # persistent ChromaDB directory (local)
 │
 ├── requirements.txt
 └── README.md
@@ -146,6 +153,12 @@ filmspot/
   - **sequential edges** `t ↔ t+1`, `type="temporal"`, `weight=1.0`
   - **KNN edges**: `sklearn.NearestNeighbors` on all `image_emb` vectors → top-5 neighbors per node (excluding adjacent ±1s), `type="semantic"`, `weight=cosine_sim`
 - `storage.py`: pickle graph (without embeddings in nodes to save space) + separate `frame_embeddings.npy` aligned by node index; loader reattaches
+- `storage.py`: pickle graph (without heavy embeddings in nodes where possible) + persist node↔vector ID mapping metadata for Chroma lookup
+- `vector_store/chroma_store.py`:
+  - initialize `chromadb.PersistentClient(path="chroma_db")`
+  - per-movie collection (e.g., `movie_<movie_id>`)
+  - upsert `ids`, `embeddings`, and metadata `{t, caption, transcript, node_id}`
+  - query top-k by embedding and return `(node_id, visual_score, metadata)`
 
 ### Phase 3 — Retrieval Engine
 
@@ -155,7 +168,7 @@ filmspot/
   - if text: `embed = encode_text(visual_q)`
   - if image: `embed = encode_image(query_image)`
   - if both: `embed = 0.5 * encode_text(visual_q) + 0.5 * encode_image(query_image)` (averaged, renormalized)
-  - cosine sim of `embed` against `frame_embeddings.npy` → top-k `(node_id, visual_score)`
+  - ChromaDB similarity query of `embed` against persisted movie collection → top-k `(node_id, visual_score)`
 - `graph_traversal.py`: BFS from each hit node up to depth=2; semantic edges decay score by `0.7×`, temporal edges by `0.9×`; accumulate best score per node
 - `fusion.py`:
   - visual score: from searcher (CLIP cosine sim)
@@ -191,6 +204,7 @@ ffmpeg-python
 networkx
 scikit-learn          # NearestNeighbors for KNN
 numpy
+chromadb             # persistent vector DB for frame embeddings
 fastapi
 uvicorn
 gradio
@@ -213,7 +227,7 @@ tqdm
 ## Verification
 
 1. `pip install -r requirements.txt`
-2. `python scripts/ingest_movie.py data/movies/sample.mp4` → produces `data/index/<id>/graph.pkl` + `frame_embeddings.npy`
+2. `python scripts/ingest_movie.py data/movies/sample.mp4` → produces `data/index/<id>/graph.pkl` + metadata and upserts embeddings into `chroma_db/`
 3. `python scripts/query.py --movie <id> --text "when does the chase begin"` → returns top-3 timestamps
 4. `python scripts/query.py --movie <id> --image reference_frame.jpg` → image-based retrieval
 5. `uvicorn api.main:app --reload` → POST /ingest then POST /query via curl
@@ -223,5 +237,5 @@ tqdm
 
 ## What we're NOT building
 - No VideoMAE / TimeSformer
-- No persistent vector DB (flat numpy is fine)
+- No distributed/cloud vector infrastructure (single-node local ChromaDB is enough)
 - No user auth
