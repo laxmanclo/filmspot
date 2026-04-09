@@ -16,3 +16,6 @@ wheels/
 *.webp
 *.mp4
 *.wav
+
+chroma_db/
+data/
