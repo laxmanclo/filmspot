@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Sequence
 
 import chromadb
 import numpy as np
@@ -76,8 +76,24 @@ class ChromaEmbeddingStore:
         )
         return ids
 
-    def query(self, movie_id: str, query_embedding: np.ndarray, top_k: int = 5) -> list[dict[str, Any]]:
-        """Query a movie collection and return top-k matches with cosine-like scores."""
+    def query(
+        self,
+        movie_id: str,
+        query_embedding: np.ndarray,
+        top_k: int = 5,
+    ) -> list[tuple[int, float, dict[str, Any]]]:
+        """
+        Query movie collection and return Phase-2 tuples:
+        `(node_id, visual_score, metadata)`.
+        """
+        detailed = self.query_detailed(movie_id=movie_id, query_embedding=query_embedding, top_k=top_k)
+        return [
+            (int(item["node_id"]), float(item["score"]), dict(item["metadata"]))
+            for item in detailed
+        ]
+
+    def query_detailed(self, movie_id: str, query_embedding: np.ndarray, top_k: int = 5) -> list[dict[str, Any]]:
+        """Query a movie collection and return top-k matches with rich metadata."""
         if query_embedding.ndim != 1:
             raise ValueError("query_embedding must have shape (D,)")
         if top_k <= 0:
@@ -103,11 +119,15 @@ class ChromaEmbeddingStore:
                 {
                     "id": vec_id,
                     "node_id": int(item_meta.get("node_id", -1)),
-                    "t": float(item_meta.get("t", 0.0)),
-                    "caption": str(item_meta.get("caption", "")),
-                    "transcript": str(item_meta.get("transcript", "")),
                     "distance": distance,
                     "score": score,
+                    "metadata": {
+                        "t": float(item_meta.get("t", 0.0)),
+                        "caption": str(item_meta.get("caption", "")),
+                        "transcript": str(item_meta.get("transcript", "")),
+                        "movie_id": str(item_meta.get("movie_id", movie_id)),
+                        "vector_id": vec_id,
+                    },
                 }
             )
         return results
