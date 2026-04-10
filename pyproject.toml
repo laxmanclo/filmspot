@@ -17,7 +17,7 @@ dependencies = [
 	"fastapi",
 	"uvicorn",
 	"gradio",
-	"anthropic",
+	"google-generativeai",
 	"pydantic",
 	"rank-bm25",
 	"tqdm",

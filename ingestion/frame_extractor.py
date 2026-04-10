@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -14,46 +15,71 @@ class FrameExtractionError(RuntimeError):
     """Raised when frame extraction fails."""
 
 
-def _require_ffmpeg_binaries() -> None:
-    """Ensure ffmpeg and ffprobe are available on PATH."""
-    missing = [binary for binary in ("ffmpeg", "ffprobe") if shutil.which(binary) is None]
-    if missing:
-        missing_display = ", ".join(missing)
-        raise FrameExtractionError(
-            f"Missing required binary/binaries: {missing_display}. "
-            "Install ffmpeg (which includes ffprobe) and ensure both are on PATH."
-        )
+def _resolve_ffmpeg_binaries() -> tuple[str, str | None]:
+    """Resolve ffmpeg/ffprobe binaries from PATH or imageio-ffmpeg fallback."""
+    ffmpeg_bin = shutil.which("ffmpeg")
+    ffprobe_bin = shutil.which("ffprobe")
+
+    if ffmpeg_bin is None:
+        try:
+            import imageio_ffmpeg
+
+            ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception as exc:  # pragma: no cover - environment fallback
+            raise FrameExtractionError(
+                "Missing ffmpeg binary. Install system ffmpeg or Python package imageio-ffmpeg."
+            ) from exc
+
+    return ffmpeg_bin, ffprobe_bin
 
 
-def _probe_video(video_path: Path) -> Tuple[int, int, float | None]:
+def _probe_video(video_path: Path, ffmpeg_bin: str, ffprobe_bin: str | None) -> Tuple[int, int, float | None]:
     """Return (width, height, duration_sec) for the first video stream."""
-    cmd = [
-        "ffprobe",
-        "-v",
-        "error",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=width,height:format=duration",
-        "-of",
-        "json",
-        str(video_path),
-    ]
+    if ffprobe_bin is not None:
+        cmd = [
+            ffprobe_bin,
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height:format=duration",
+            "-of",
+            "json",
+            str(video_path),
+        ]
 
-    try:
-        proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as exc:
-        raise FrameExtractionError(f"ffprobe failed: {exc.stderr.strip() or exc}") from exc
+        try:
+            proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            payload = json.loads(proc.stdout)
+            stream = payload["streams"][0]
+            width = int(stream["width"])
+            height = int(stream["height"])
+            duration_raw = payload.get("format", {}).get("duration")
+            duration = float(duration_raw) if duration_raw is not None else None
+            return width, height, duration
+        except (subprocess.CalledProcessError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+            pass
 
-    try:
-        payload = json.loads(proc.stdout)
-        stream = payload["streams"][0]
-        width = int(stream["width"])
-        height = int(stream["height"])
-        duration_raw = payload.get("format", {}).get("duration")
-        duration = float(duration_raw) if duration_raw is not None else None
-    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
-        raise FrameExtractionError("Unable to parse ffprobe output for video dimensions.") from exc
+    fallback_cmd = [ffmpeg_bin, "-hide_banner", "-i", str(video_path)]
+    proc = subprocess.run(fallback_cmd, capture_output=True, text=True)
+    stderr = proc.stderr or ""
+
+    size_match = re.search(r"(\d{2,5})x(\d{2,5})", stderr)
+    if not size_match:
+        raise FrameExtractionError("Unable to infer video dimensions from ffmpeg output.")
+
+    width = int(size_match.group(1))
+    height = int(size_match.group(2))
+
+    duration_match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", stderr)
+    if duration_match:
+        hours = float(duration_match.group(1))
+        minutes = float(duration_match.group(2))
+        seconds = float(duration_match.group(3))
+        duration = hours * 3600 + minutes * 60 + seconds
+    else:
+        duration = None
 
     return width, height, duration
 
@@ -73,6 +99,7 @@ def _validated_time_window(start_sec: float, end_sec: float | None, duration: fl
 
 
 def _build_ffmpeg_cmd(
+    ffmpeg_bin: str,
     video_path: Path,
     fps: float,
     source_width: int,
@@ -92,7 +119,7 @@ def _build_ffmpeg_cmd(
     if resize is not None:
         filters.append(f"scale={out_width}:{out_height}")
 
-    cmd: List[str] = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
+    cmd: List[str] = [ffmpeg_bin, "-hide_banner", "-loglevel", "error"]
     if start_sec > 0:
         cmd.extend(["-ss", f"{start_sec:.6f}"])
 
@@ -140,13 +167,13 @@ def extract_frames(
     Returns:
         List of tuples: (timestamp_sec, PIL.Image.Image)
     """
-    _require_ffmpeg_binaries()
+    ffmpeg_bin, ffprobe_bin = _resolve_ffmpeg_binaries()
 
     path = Path(video_path).expanduser().resolve()
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"Video file not found: {path}")
 
-    source_width, source_height, duration = _probe_video(path)
+    source_width, source_height, duration = _probe_video(path, ffmpeg_bin=ffmpeg_bin, ffprobe_bin=ffprobe_bin)
     start_sec, end_sec = _validated_time_window(start_sec, end_sec, duration)
 
     if end_sec is not None and math.isclose(start_sec, end_sec):
@@ -154,6 +181,7 @@ def extract_frames(
 
     cmd, out_width, out_height = _build_ffmpeg_cmd(
         video_path=path,
+        ffmpeg_bin=ffmpeg_bin,
         fps=fps,
         source_width=source_width,
         source_height=source_height,

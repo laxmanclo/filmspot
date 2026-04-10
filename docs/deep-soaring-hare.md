@@ -103,7 +103,7 @@ filmspot/
 │
 ├── retrieval/
 │   ├── __init__.py
-│   ├── query_decomposer.py     # Claude API: text query → {visual_q, dialogue_q}
+│   ├── query_decomposer.py     # Gemini API: text query → {visual_q, dialogue_q}
 │   ├── searcher.py             # CLIP encode query (text or image) → cosine sim search
 │   ├── graph_traversal.py      # expand hits via KNN + sequential edges with score decay
 │   ├── fusion.py               # visual_score + BM25 transcript_score → final + conflict flag
@@ -162,7 +162,7 @@ filmspot/
 
 ### Phase 3 — Retrieval Engine
 
-- `query_decomposer.py`: Claude API prompt → given text query, return `{"visual": "person in shadows removing mask", "dialogue": "I was the killer all along"}`. If image query, skip this step — image IS the visual query.
+- `query_decomposer.py`: Gemini API prompt → given text query, return `{"visual": "person in shadows removing mask", "dialogue": "I was the killer all along"}`. If image query, skip this step — image IS the visual query.
 - `searcher.py`:
   - accepts either `text: str` OR `image: PIL.Image` or both
   - if text: `embed = encode_text(visual_q)`
@@ -208,7 +208,7 @@ chromadb             # persistent vector DB for frame embeddings
 fastapi
 uvicorn
 gradio
-anthropic             # Claude API for query decomposition
+google-generativeai   # Gemini API for query decomposition
 pydantic
 rank-bm25             # BM25 for transcript matching
 tqdm
