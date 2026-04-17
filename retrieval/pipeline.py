@@ -27,7 +27,7 @@ class RetrievalEngine:
         image: Image.Image | None = None,
         top_k: int = 12,
         traversal: TraversalConfig | None = None,
-        merge_window_sec: float = 5.0,
+        merge_window_sec: float = 2.0,
         top_scenes: int = 3,
     ) -> dict[str, Any]:
         if top_scenes <= 0:

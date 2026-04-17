@@ -12,7 +12,8 @@ chromadb
 fastapi
 uvicorn
 gradio
-google-generativeai
+google-genai
 pydantic
 rank-bm25
 tqdm
+modal

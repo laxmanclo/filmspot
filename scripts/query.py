@@ -34,7 +34,7 @@ def main() -> None:
         top_scenes=args.top_scenes,
     )
 
-    print(json.dumps({"context": result["context"], "scenes": result["scenes"]}, indent=2))
+    print(json.dumps({"context": result["context"], "scenes": result["scenes"], "synthesis": result.get("synthesis")}, indent=2))
 
 
 if __name__ == "__main__":

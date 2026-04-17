@@ -176,13 +176,20 @@ def extract_frames(
     source_width, source_height, duration = _probe_video(path, ffmpeg_bin=ffmpeg_bin, ffprobe_bin=ffprobe_bin)
     start_sec, end_sec = _validated_time_window(start_sec, end_sec, duration)
 
+    effective_fps = float(fps)
+    if max_frames is not None and max_frames > 0 and end_sec is not None and end_sec > start_sec:
+        window_duration = float(end_sec - start_sec)
+        target_fps = max_frames / max(window_duration, 1e-6)
+        effective_fps = min(float(fps), float(target_fps))
+        effective_fps = max(effective_fps, 1e-4)
+
     if end_sec is not None and math.isclose(start_sec, end_sec):
         return []
 
     cmd, out_width, out_height = _build_ffmpeg_cmd(
         video_path=path,
         ffmpeg_bin=ffmpeg_bin,
-        fps=fps,
+        fps=effective_fps,
         source_width=source_width,
         source_height=source_height,
         start_sec=start_sec,
@@ -213,7 +220,7 @@ def extract_frames(
             raise FrameExtractionError("Received incomplete frame bytes from ffmpeg.")
 
         image = Image.frombytes("RGB", (out_width, out_height), raw)
-        ts = start_sec + (idx / fps)
+        ts = start_sec + (idx / effective_fps)
         frames.append((round(ts, 3), image))
         idx += 1
 

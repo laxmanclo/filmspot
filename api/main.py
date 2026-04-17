@@ -21,6 +21,10 @@ def ingest(payload: IngestRequest) -> IngestResponse:
             fps=payload.fps,
             semantic_k=payload.semantic_k,
             max_frames=payload.max_frames,
+            caption_model=payload.caption_model,
+            caption_device=payload.caption_device,
+            caption_batch_size=payload.caption_batch_size,
+            caption_max_new_tokens=payload.caption_max_new_tokens,
         )
         return IngestResponse(**result)
     except Exception as exc:
@@ -54,7 +58,7 @@ async def query(
             top_k=top_k,
             top_scenes=top_scenes,
         )
-        return QueryResponse(context=result["context"], scenes=result["scenes"])
+        return QueryResponse(context=result["context"], scenes=result["scenes"], synthesis=result.get("synthesis"))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:

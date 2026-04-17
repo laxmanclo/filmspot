@@ -1,16 +1,14 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Sequence
 
 import networkx as nx
 
 
 def _tokenize(text: str) -> list[str]:
-    return [token for token in text.lower().split() if token]
-
-
-def _concat_text(caption: str, transcript: str) -> str:
-    return f"{caption} {transcript}".strip()
+    normalized = re.sub(r"[^a-z0-9\s]", " ", text.lower())
+    return [token for token in normalized.split() if token]
 
 
 def bm25_scores(dialogue_query: str, docs: Sequence[str]) -> list[float]:
@@ -65,7 +63,9 @@ def fuse_candidates(
     for item in candidates:
         node_id = int(item["node_id"])
         attrs = graph.nodes[node_id]
-        docs.append(_concat_text(str(attrs.get("caption", "")), str(attrs.get("transcript", ""))))
+        transcript = str(attrs.get("transcript", "")).strip()
+        caption = str(attrs.get("caption", "")).strip()
+        docs.append(f"{caption} {transcript}".strip())
 
     transcript_scores = bm25_scores(dialogue_query or "", docs)
 

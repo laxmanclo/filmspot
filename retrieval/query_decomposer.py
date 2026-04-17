@@ -30,7 +30,7 @@ class QueryDecomposer:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-2.5-flash",
         temperature: float = 0.0,
         max_output_tokens: int = 220,
     ) -> None:
@@ -62,15 +62,15 @@ class QueryDecomposer:
 
     def _call_gemini(self, text: str) -> DecomposedQuery:
         try:
-            import google.generativeai as genai
+            from google import genai
+            from google.genai import types
         except Exception as exc:
-            raise QueryDecompositionError("google-generativeai package is not available") from exc
+            raise QueryDecompositionError("google-genai package is not available") from exc
 
         if not self.api_key:
             raise QueryDecompositionError("GEMINI_API_KEY (or GOOGLE_API_KEY) is not set")
 
-        genai.configure(api_key=self.api_key)
-        model = genai.GenerativeModel(self.model)
+        client = genai.Client(api_key=self.api_key)
 
         prompt = (
             "Decompose the user query for multimodal video retrieval. "
@@ -81,16 +81,17 @@ class QueryDecomposer:
             "Do not include markdown or extra keys."
         )
 
-        resp = model.generate_content(
-            [
+        resp = client.models.generate_content(
+            model=self.model,
+            contents=[
                 prompt,
                 f"User query: {text}",
                 "Return JSON only.",
             ],
-            generation_config={
-                "temperature": self.temperature,
-                "max_output_tokens": self.max_output_tokens,
-            },
+            config=types.GenerateContentConfig(
+                temperature=self.temperature,
+                max_output_tokens=self.max_output_tokens,
+            ),
         )
 
         raw = str(getattr(resp, "text", "") or "").strip()

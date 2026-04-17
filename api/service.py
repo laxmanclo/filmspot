@@ -40,12 +40,36 @@ def _metadata_path(movie_id: str) -> Path:
     return _index_dir(movie_id) / "metadata.json"
 
 
+def _synthesize_scenes(scenes: list[dict[str, Any]]) -> str:
+    if not scenes:
+        return "No confident scene match found. Try a more specific visual phrase or increase indexed frames."
+
+    lines: list[str] = []
+    for idx, scene in enumerate(scenes, start=1):
+        start_t = float(scene.get("start_t", 0.0))
+        end_t = float(scene.get("end_t", 0.0))
+        caption = str(scene.get("caption", "")).strip()
+        transcript = str(scene.get("transcript", "")).strip()
+
+        detail = caption or transcript or "No caption/transcript details were available for this window."
+        if caption and transcript:
+            detail = f"{caption} Dialogue: {transcript}"
+
+        lines.append(f"Scene {idx} ({start_t:.1f}s-{end_t:.1f}s): {detail}")
+
+    return " ".join(lines)
+
+
 def ingest_movie(
     movie_path: str | Path,
     movie_id: str | None = None,
     fps: float = 1.0,
     semantic_k: int = 5,
     max_frames: int | None = None,
+    caption_model: str = "gemini-2.5-flash",
+    caption_device: str | None = None,
+    caption_batch_size: int = 4,
+    caption_max_new_tokens: int = 30,
 ) -> dict[str, Any]:
     source = Path(movie_path).expanduser().resolve()
     if not source.exists() or not source.is_file():
@@ -59,7 +83,13 @@ def ingest_movie(
     if not frames:
         raise ValueError("No frames extracted; cannot ingest movie")
 
-    captions = generate_captions(frames)
+    captions = generate_captions(
+        frames,
+        model_name=caption_model,
+        device=caption_device,
+        batch_size=caption_batch_size,
+        max_new_tokens=caption_max_new_tokens,
+    )
     captions_map = {float(ts): text for ts, text in captions}
     transcripts_by_second = transcribe_audio(source)
 
@@ -97,6 +127,7 @@ def ingest_movie(
         "duration_sec": duration_sec,
         "fps": fps,
         "semantic_k": semantic_k,
+        "caption_model": caption_model,
         "index_dir": str(out_dir),
     }
 
@@ -144,4 +175,5 @@ def query_movie(
         top_k=top_k,
         top_scenes=top_scenes,
     )
+    result["synthesis"] = _synthesize_scenes(result.get("scenes", []))
     return result

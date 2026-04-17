@@ -9,9 +9,9 @@ import networkx as nx
 
 @dataclass(slots=True)
 class TraversalConfig:
-    depth: int = 2
-    semantic_decay: float = 0.7
-    temporal_decay: float = 0.9
+    depth: int = 1
+    semantic_decay: float = 0.6
+    temporal_decay: float = 0.75
 
 
 def _edge_decay(edge_type: str, config: TraversalConfig) -> float:

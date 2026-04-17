@@ -11,6 +11,10 @@ class IngestRequest(BaseModel):
     fps: float = Field(default=1.0, gt=0)
     semantic_k: int = Field(default=5, gt=0)
     max_frames: int | None = Field(default=None, gt=0)
+    caption_model: str = Field(default="gemini-2.5-flash")
+    caption_device: str | None = Field(default=None)
+    caption_batch_size: int = Field(default=4, gt=0)
+    caption_max_new_tokens: int = Field(default=30, gt=0)
 
 
 class IngestResponse(BaseModel):
@@ -19,6 +23,7 @@ class IngestResponse(BaseModel):
     duration_sec: float
     fps: float
     semantic_k: int
+    caption_model: str
     index_dir: str
     movie_path: str
     indexed_at: str
@@ -39,6 +44,7 @@ class SceneResult(BaseModel):
 class QueryResponse(BaseModel):
     context: dict[str, Any]
     scenes: list[SceneResult]
+    synthesis: str | None = None
 
 
 class MoviesResponse(BaseModel):
