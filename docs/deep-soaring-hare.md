@@ -183,11 +183,18 @@ filmspot/
 - `POST /query` → multipart form: `movie_id` (str) + `text` (optional str) + `image` (optional file) → `{scenes: [...]}`
 - `GET /movies` → list of indexed movie IDs
 
-### Phase 5 — Gradio Demo
+### Phase 5 — UI
 
-- Left panel: upload movie file → ingest button
-- Right panel: text box (optional) + image upload (optional) → search
-- Results: list of scene cards with timestamp, caption, transcript, visual/audio scores, and a red "⚠ conflict" badge when flagged
+- Build a good looking UI using NextJS
+- The home page should list all the movie clips that are already ingested
+- The home page should have an "Add Clip" button that allows the user to upload a new movie clip, give it a name and ingest it in the backend. Once the user enters the information and clicks "Add" it should show a progress bar of the movie being ingested
+- Once the movie is ingested, it should appear in the home page
+- When the user clicks on the ingested movie, it should bring up a movie player that is able to play the selected movie clip, like a standard video player with volume controls, seeker etc
+- The control bar should have a chat button in the bottom right side. When the user clicks it, a chat panel should open up in the right hand side of the screen
+- The user should be able to type in a query and and send it.
+- Once the query is sent, the back end should process it and return all timestamps where the query matches
+- The returned timestamps durations should be visible in the seek bar of the video, the user should be able to select one of the marked timestamp to jump to that point
+- The history of queries asked for a given movie clip and the response timestamp should be stored and be visible across sessions 
 
 ---
 

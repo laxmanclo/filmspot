@@ -78,13 +78,25 @@ uvicorn api.main:app --reload
 
 Endpoints:
 - `POST /ingest`
+- `POST /ingest/upload` (upload clip + ingest asynchronously)
+- `GET /ingest/jobs/{job_id}` (poll ingest progress)
 - `POST /query`
 - `GET /movies`
+- `GET /movies/{movie_id}/stream` (video playback)
+- `GET /movies/{movie_id}/history` (persistent query history)
+
+Opening `http://127.0.0.1:8000/` serves the browser UI.
 
 ## Demo
 
 ```bash
-python3 demo/app.py
+uvicorn api.main:app --reload
 ```
 
-This opens a Gradio UI for ingest + query.
+This starts the same FastAPI app and serves a web UI with:
+- Home page listing all ingested clips
+- **Add Clip** modal (name + file upload) with ingestion progress bar
+- Movie player view with standard controls
+- Chat panel for multimodal queries (text and optional image)
+- Timestamp markers shown on a retrieval timeline; clicking marker jumps playback
+- Query history persisted across sessions per movie
