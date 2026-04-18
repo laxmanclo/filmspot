@@ -15,6 +15,7 @@ dependencies = [
 	"numpy",
 	"chromadb",
 	"fastapi",
+	"python-multipart",
 	"uvicorn",
 	"gradio",
 	"google-genai",

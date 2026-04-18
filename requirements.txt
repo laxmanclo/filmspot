@@ -10,6 +10,7 @@ scikit-learn
 numpy
 chromadb
 fastapi
+python-multipart
 uvicorn
 gradio
 google-genai
