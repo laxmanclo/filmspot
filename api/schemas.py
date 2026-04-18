@@ -49,3 +49,33 @@ class QueryResponse(BaseModel):
 
 class MoviesResponse(BaseModel):
     movies: list[dict[str, Any]]
+
+
+class IngestJobStartResponse(BaseModel):
+    job_id: str
+    status: str
+    progress: float
+    message: str
+
+
+class IngestJobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    progress: float
+    message: str
+    movie_id: str | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+
+
+class QueryHistoryEntry(BaseModel):
+    id: str
+    created_at: str
+    query_text: str | None = None
+    query_image: str | None = None
+    scenes: list[SceneResult]
+
+
+class QueryHistoryResponse(BaseModel):
+    movie_id: str
+    entries: list[QueryHistoryEntry]
