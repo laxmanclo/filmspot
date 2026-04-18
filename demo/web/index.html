@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FilmSpot</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>FilmSpot</h1>
+      <button id="add-clip-btn" class="btn primary">Add Clip</button>
+    </header>
+
+    <main id="home-view" class="view active">
+      <section class="section-header">
+        <h2>Ingested Movie Clips</h2>
+        <p>Select a clip to open player + retrieval chat.</p>
+      </section>
+      <section id="movies-grid" class="movies-grid"></section>
+      <p id="home-empty" class="empty hidden">No ingested clips yet. Click <strong>Add Clip</strong> to get started.</p>
+    </main>
+
+    <main id="player-view" class="view">
+      <div class="player-header">
+        <button id="back-btn" class="btn">← Back</button>
+        <div>
+          <h2 id="player-title"></h2>
+          <p id="player-subtitle"></p>
+        </div>
+      </div>
+
+      <div class="player-layout">
+        <section class="video-pane">
+          <div class="video-wrapper">
+            <video id="movie-player" controls preload="metadata"></video>
+            <button id="chat-toggle" class="chat-fab" aria-label="Open chat panel">💬</button>
+          </div>
+          <div class="timeline-box">
+            <div class="timeline-title">Matched timestamps</div>
+            <div id="timeline-track" class="timeline-track"></div>
+            <div id="timeline-list" class="timeline-list"></div>
+          </div>
+        </section>
+
+        <aside id="chat-panel" class="chat-panel hidden">
+          <h3>Ask this clip</h3>
+          <div id="chat-log" class="chat-log"></div>
+          <form id="query-form" class="query-form">
+            <textarea id="query-text" placeholder="e.g. when does the villain reveal himself?" rows="3"></textarea>
+            <div class="row">
+              <input id="query-image" type="file" accept="image/*" />
+              <button type="submit" class="btn primary">Send</button>
+            </div>
+          </form>
+        </aside>
+      </div>
+    </main>
+
+    <dialog id="add-clip-modal" class="modal">
+      <form id="ingest-form" class="modal-content">
+        <h3>Add Clip</h3>
+        <label>
+          Clip Name
+          <input id="movie-name" required placeholder="Dark Knight - Bank Heist" />
+        </label>
+        <label>
+          Movie File
+          <input id="movie-file" required type="file" accept="video/*" />
+        </label>
+        <div class="row">
+          <label>
+            FPS
+            <input id="fps" type="number" min="0.1" step="0.1" value="1" />
+          </label>
+          <label>
+            Semantic K
+            <input id="semantic-k" type="number" min="1" step="1" value="5" />
+          </label>
+        </div>
+        <div id="ingest-progress-wrap" class="hidden">
+          <progress id="ingest-progress" max="100" value="0"></progress>
+          <p id="ingest-status">Queued…</p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancel-ingest" class="btn">Cancel</button>
+          <button type="submit" class="btn primary">Add</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="movie-card-template">
+      <button class="movie-card">
+        <h3 class="movie-name"></h3>
+        <p class="movie-meta"></p>
+        <p class="movie-history"></p>
+      </button>
+    </template>
+
+    <template id="chat-entry-template">
+      <article class="chat-entry">
+        <p class="chat-query"></p>
+        <ul class="chat-scenes"></ul>
+      </article>
+    </template>
+
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>
