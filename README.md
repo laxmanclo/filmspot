@@ -100,3 +100,13 @@ This starts the same FastAPI app and serves a web UI with:
 - Chat panel for multimodal queries (text and optional image)
 - Timestamp markers shown on a retrieval timeline; clicking marker jumps playback
 - Query history persisted across sessions per movie
+
+Sentence-only demo (captions + transcript from sentence graph):
+
+```bash
+python3 demo/sentence_demo.py --index-dir data/index/sample --port 7861
+```
+
+## Project Report
+
+Main report lives at `docs/filmspot_project_report.md`.
